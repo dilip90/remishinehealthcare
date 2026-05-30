@@ -1,0 +1,40 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isPdf() {
+      return request.resource.contentType == 'application/pdf';
+    }
+
+    function isAllowedUpload() {
+      return isImage() || isPdf();
+    }
+
+    match /products/{fileName} {
+      allow read: if true;
+      allow write: if signedIn() && isAllowedUpload() && request.resource.size < 5 * 1024 * 1024;
+    }
+
+    match /hero-banners/{fileName} {
+      allow read: if true;
+      allow write: if signedIn() && isImage() && request.resource.size < 8 * 1024 * 1024;
+    }
+
+    match /documents/{fileName} {
+      allow read: if true;
+      allow write: if signedIn() && isPdf() && request.resource.size < 10 * 1024 * 1024;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,117 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in [
+          'super-admin',
+          'admin',
+          'product-manager'
+        ];
+    }
+
+    function canManageUsers() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in [
+          'super-admin',
+          'admin'
+        ];
+    }
+
+    function isValidEnquiry() {
+      return request.resource.data.keys().hasOnly([
+          'name',
+          'phone',
+          'email',
+          'message',
+          'productId',
+          'status',
+          'createdAt'
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.name.size() <= 120
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() >= 7
+        && request.resource.data.phone.size() <= 30
+        && (!('email' in request.resource.data)
+          || (request.resource.data.email is string
+            && request.resource.data.email.size() <= 160))
+        && request.resource.data.message is string
+        && request.resource.data.message.size() >= 3
+        && request.resource.data.message.size() <= 4000
+        && (!('productId' in request.resource.data)
+          || (request.resource.data.productId is string
+            && request.resource.data.productId.size() <= 120))
+        && request.resource.data.status == 'new';
+    }
+
+    function isValidEnquiryMail() {
+      return request.resource.data.keys().hasOnly([
+          'to',
+          'cc',
+          'replyTo',
+          'message',
+          'createdAt'
+        ])
+        && request.resource.data.to == ['pathak87pawan@gmail.com']
+        && (!('cc' in request.resource.data)
+          || request.resource.data.cc == ['techtitan0190@gmail.com'])
+        && (!('replyTo' in request.resource.data)
+          || request.resource.data.replyTo is list)
+        && request.resource.data.message.keys().hasOnly(['subject', 'text', 'html'])
+        && request.resource.data.message.subject is string
+        && request.resource.data.message.subject.size() <= 180
+        && request.resource.data.message.text is string
+        && request.resource.data.message.text.size() <= 6000
+        && request.resource.data.message.html is string
+        && request.resource.data.message.html.size() <= 8000;
+    }
+
+    match /products/{productId} {
+      allow read: if resource.data.isActive == true || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if resource.data.isActive == true || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /heroBanners/{bannerId} {
+      allow read: if resource.data.isActive == true || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /siteSettings/{settingId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /enquiries/{enquiryId} {
+      allow create: if isValidEnquiry();
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /mail/{mailId} {
+      allow create: if isValidEnquiryMail();
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == userId);
+      allow create, update, delete: if canManageUsers();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+
+# Next.js / TypeScript
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Firebase local/deploy cache
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+database-debug.log
+storage-debug.log
+*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Testing / coverage
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# IDE / editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
