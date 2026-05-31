@@ -9,49 +9,62 @@ import FloatingWhatsApp from '@/components/FloatingWhatsApp';
 import { firebaseCollections, type ProductDocument } from '@/lib/firebaseCollections';
 import { siteSettings } from '@/lib/siteData';
 
-type ProductRow = ProductDocument & { id: string };
+type DetailProduct = {
+  id: string;
+  name: string;
+  description: string;
+  composition: string;
+  strength: string;
+  packSize: string;
+  category?: string;
+  categoryName?: string;
+  imageUrl?: string;
+  mrp?: string;
+};
 
-function getProductId() {
-  if (typeof window === 'undefined') {
-    return '';
-  }
-
-  return new URLSearchParams(window.location.search).get('id') || '';
+interface ProductDetailClientProps {
+  product: DetailProduct | null;
+  slug: string;
 }
 
-export default function ProductDetailsPage() {
-  const [productId, setProductId] = useState('');
-  const [product, setProduct] = useState<ProductRow | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export default function ProductDetailClient({ product: initialProduct, slug }: ProductDetailClientProps) {
+  const [product, setProduct] = useState<DetailProduct | null>(initialProduct);
+  const [isLoading, setIsLoading] = useState(!initialProduct);
 
   useEffect(() => {
     let isMounted = true;
-    const id = getProductId();
-    setProductId(id);
 
-    if (!id) {
+    if (initialProduct) {
+      setProduct(initialProduct);
+      setIsLoading(false);
+      return;
+    }
+
+    if (!slug) {
       setIsLoading(false);
       return;
     }
 
     const productQuery = query(
       firebaseCollections.products,
-      where('slug', '==', id),
+      where('slug', '==', slug),
       where('isActive', '==', true),
       limit(1)
     );
 
-    return onSnapshot(
+    const unsubscribe = onSnapshot(
       productQuery,
       async (snapshot) => {
-        const firstProduct = snapshot.docs[0];
-        let productData = firstProduct ? { id: firstProduct.id, ...firstProduct.data() } : null;
+        const firstDoc = snapshot.docs[0];
+        let productData = firstDoc
+          ? ({ id: firstDoc.id, ...firstDoc.data() } as ProductDocument & { id: string })
+          : null;
 
-        if (!productData && !id.includes('/')) {
+        if (!productData && !slug.includes('/')) {
           try {
-            const productDocument = await getDoc(doc(firebaseCollections.products, id));
+            const productDocument = await getDoc(doc(firebaseCollections.products, slug));
             productData = productDocument.exists()
-              ? { id: productDocument.id, ...productDocument.data() }
+              ? ({ id: productDocument.id, ...productDocument.data() } as ProductDocument & { id: string })
               : null;
           } catch {
             productData = null;
@@ -62,7 +75,7 @@ export default function ProductDetailsPage() {
           return;
         }
 
-        setProduct(productData);
+        setProduct(productData ? { ...productData } : null);
         setIsLoading(false);
       },
       () => {
@@ -77,13 +90,14 @@ export default function ProductDetailsPage() {
 
     return () => {
       isMounted = false;
+      unsubscribe();
     };
-  }, []);
+  }, [initialProduct, slug]);
 
   const whatsappProductHref = useMemo(() => {
-    const name = product?.name || productId || 'product';
+    const name = product?.name || slug || 'product';
     return `${siteSettings.whatsappHref}?text=${encodeURIComponent(`Enquiry about ${name}`)}`;
-  }, [product, productId]);
+  }, [product, slug]);
 
   if (isLoading) {
     return (
@@ -169,7 +183,7 @@ export default function ProductDetailsPage() {
 
           <div>
             <p className="text-sm font-semibold uppercase tracking-wide text-secondary">
-              {product.categoryName}
+              {product.categoryName || product.category}
             </p>
             <h1 className="mt-3 text-4xl font-bold text-slate-950 sm:text-5xl">{product.name}</h1>
             <p className="mt-5 text-base leading-7 text-slate-600">{product.description}</p>

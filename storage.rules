@@ -6,6 +6,16 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    function isAdmin() {
+      return signedIn()
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in [
+          'super-admin',
+          'admin',
+          'product-manager'
+        ];
+    }
+
     function isImage() {
       return request.resource.contentType.matches('image/.*');
     }
@@ -18,19 +28,19 @@ service firebase.storage {
       return isImage() || isPdf();
     }
 
-    match /products/{fileName} {
+    match /products/{allPaths=**} {
       allow read: if true;
-      allow write: if signedIn() && isAllowedUpload() && request.resource.size < 5 * 1024 * 1024;
+      allow write: if isAdmin() && isImage() && request.resource.size < 2 * 1024 * 1024;
     }
 
     match /hero-banners/{fileName} {
       allow read: if true;
-      allow write: if signedIn() && isImage() && request.resource.size < 8 * 1024 * 1024;
+      allow write: if isAdmin() && isImage() && request.resource.size < 8 * 1024 * 1024;
     }
 
     match /documents/{fileName} {
       allow read: if true;
-      allow write: if signedIn() && isPdf() && request.resource.size < 10 * 1024 * 1024;
+      allow write: if isAdmin() && isPdf() && request.resource.size < 10 * 1024 * 1024;
     }
 
     match /{allPaths=**} {

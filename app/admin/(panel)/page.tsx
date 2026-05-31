@@ -87,13 +87,19 @@ export default function AdminDashboardPage() {
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold text-slate-500">{card.label}</p>
-                  <p className="mt-2 text-3xl font-bold text-slate-950">
-                    {isLoading ? '-' : card.value}
-                  </p>
+                  {isLoading ? (
+                    <div className="mt-3 h-8 w-16 animate-pulse rounded bg-slate-100" />
+                  ) : (
+                    <p className="mt-2 text-3xl font-bold text-slate-950">{card.value}</p>
+                  )}
                 </div>
-                <span className="grid h-11 w-11 place-items-center rounded-lg bg-primary-soft text-primary">
-                  <Icon className="h-5 w-5" />
-                </span>
+                {isLoading ? (
+                  <span className="h-11 w-11 animate-pulse rounded-lg bg-slate-100" />
+                ) : (
+                  <span className="grid h-11 w-11 place-items-center rounded-lg bg-primary-soft text-primary">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                )}
               </div>
             </Link>
           );

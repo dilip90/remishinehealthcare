@@ -1,8 +1,9 @@
 import { Metadata } from 'next';
-import { BadgeCheck, Mail, MapPin, MessageCircle, Phone } from 'lucide-react';
+import { BadgeCheck, Mail, MapPin, Phone } from 'lucide-react';
 import Footer from '@/components/Footer';
 import FloatingWhatsApp from '@/components/FloatingWhatsApp';
 import EnquiryForm from '@/components/EnquiryForm';
+import WhatsAppIcon from '@/components/WhatsAppIcon';
 import { pageMetadata } from '@/lib/seo';
 import { siteSettings } from '@/lib/siteData';
 
@@ -41,7 +42,7 @@ export default function ContactPage() {
               className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-secondary"
             >
               <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-secondary-soft text-secondary">
-                <MessageCircle className="h-5 w-5" />
+                <WhatsAppIcon className="h-5 w-5" />
               </span>
               <span>
                 <span className="block text-sm text-slate-500">WhatsApp</span>
@@ -76,22 +77,22 @@ export default function ContactPage() {
             </a>
 
             <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
-                <MapPin className="h-5 w-5" />
-              </span>
-              <span>
-                <span className="block text-sm text-slate-500">Map</span>
-                <span className="font-semibold text-slate-950">Remishine Healthcare</span>
-              </span>
-            </div>
-
-            <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
               <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-secondary-soft text-secondary-dark">
                 <BadgeCheck className="h-5 w-5" />
               </span>
               <span>
                 <span className="block text-sm text-slate-500">GSTIN</span>
                 <span className="font-semibold text-slate-950">{siteSettings.gstin}</span>
+              </span>
+            </div>
+
+            <div className="flex items-center gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+                <MapPin className="h-5 w-5" />
+              </span>
+              <span>
+                <span className="block text-sm text-slate-500">Map</span>
+                <span className="font-semibold text-slate-950">Remishine Healthcare</span>
               </span>
             </div>
           </div>

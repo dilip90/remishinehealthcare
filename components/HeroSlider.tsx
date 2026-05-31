@@ -1,16 +1,18 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 const slides = [
-  { src: '/hero-banner/1.png', alt: 'Remishine Healthcare hero banner 1' },
-  { src: '/hero-banner/2.png', alt: 'Remishine Healthcare hero banner 2' },
-  { src: '/hero-banner/3.png', alt: 'Remishine Healthcare hero banner 3' },
-  { src: '/hero-banner/4.png', alt: 'Remishine Healthcare hero banner 4' },
-  { src: '/hero-banner/5.png', alt: 'Remishine Healthcare hero banner 5' },
-  { src: '/hero-banner/6.png', alt: 'Remishine Healthcare hero banner 6' },
+  { src: '/hero-banner/1.png', alt: 'Remishine Healthcare product banner 1', href: '/products' },
+  { src: '/hero-banner/2.png', alt: 'Remishine Healthcare product banner 2', href: '/products' },
+  { src: '/hero-banner/3.png', alt: 'Remishine Healthcare product banner 3', href: '/products' },
+  { src: '/hero-banner/4.png', alt: 'Remishine Healthcare product banner 4', href: '/products' },
+  { src: '/hero-banner/5.png', alt: 'Remishine Healthcare product banner 5', href: '/products' },
+  { src: '/hero-banner/6.png', alt: 'Remishine Healthcare product banner 6', href: '/products' },
+  { src: '/hero-banner/7.png', alt: 'Remishine Healthcare product banner 7', href: '/products' },
 ];
 
 const AUTOPLAY_DELAY = 2500;
@@ -51,20 +53,26 @@ export default function HeroSlider() {
       onMouseLeave={() => setIsPaused(false)}
     >
       <div className="relative w-full overflow-hidden bg-white">
-        <div className="relative h-[220px] w-full sm:h-[300px] md:h-[400px] lg:h-[500px] xl:h-[560px] 2xl:h-[600px]">
+        <div className="relative aspect-[16/9] w-full sm:h-[300px] sm:aspect-auto md:h-[400px] lg:h-[500px] xl:h-[560px] 2xl:h-[600px]">
           {slides.map((slide, index) => (
-            <Image
+            <Link
               key={slide.src}
-              src={slide.src}
-              alt={slide.alt}
-              fill
-              priority={index === 0}
-              sizes="100vw"
-              draggable={false}
-              className={`object-cover object-center transition-opacity duration-700 ease-in-out ${
-                activeSlide === index ? 'opacity-100' : 'opacity-0'
+              href={slide.href}
+              aria-label={`View ${slide.alt.replace(' banner', '')}`}
+              className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+                activeSlide === index ? 'opacity-100' : 'pointer-events-none opacity-0'
               }`}
-            />
+            >
+              <Image
+                src={slide.src}
+                alt={slide.alt}
+                fill
+                priority={index === 0}
+                sizes="100vw"
+                draggable={false}
+                className="object-contain object-center sm:object-cover"
+              />
+            </Link>
           ))}
         </div>
 

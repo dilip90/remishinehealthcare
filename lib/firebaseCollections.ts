@@ -19,6 +19,7 @@ export type ProductDocument = {
   composition: string;
   strength: string;
   packSize: string;
+  mrp?: string;
   description: string;
   imageUrl?: string;
   isFeatured: boolean;

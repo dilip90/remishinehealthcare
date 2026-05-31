@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { siteSettings } from './siteData';
 
 export const siteUrl = (
-  process.env.NEXT_PUBLIC_SITE_URL || 'https://remishine-healthcare.web.app'
+  process.env.NEXT_PUBLIC_SITE_URL || 'https://remishinehealthcare.com'
 ).replace(/\/$/, '');
 
 export const seoDefaults = {

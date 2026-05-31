@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowRight, Search, X } from 'lucide-react';
 import { onSnapshot, orderBy, query as firestoreQuery, where } from 'firebase/firestore';
 import { firebaseCollections, type ProductDocument } from '@/lib/firebaseCollections';
-import { products as staticProducts, therapeuticSegments } from '@/lib/siteData';
+import { therapeuticSegments } from '@/lib/siteData';
 
 const allCategory = 'All';
 type CmsProduct = ProductDocument & { id: string };
@@ -42,24 +42,16 @@ export default function ProductCatalog() {
   }, []);
 
   const products = useMemo(() => {
-    if (!cmsProducts?.length) {
-      return staticProducts.map((product) => ({
-        ...product,
-        href: `/products/${product.id}`,
-        actionLabel: 'View product',
-        imageUrl: '',
-      }));
-    }
-
     return cmsProducts.map((product) => ({
-      id: product.slug,
-      href: `/products/details?id=${encodeURIComponent(product.slug)}`,
+      id: product.slug || product.id,
+      href: `/products/details?id=${encodeURIComponent(product.slug || product.id)}`,
       actionLabel: 'View product',
       name: product.name,
       category: product.categoryName,
       composition: product.composition,
       strength: product.strength,
       packSize: product.packSize,
+      mrp: product.mrp || '',
       description: product.description,
       featured: product.isFeatured,
       imageUrl: product.imageUrl || '',
@@ -78,6 +70,7 @@ export default function ProductCatalog() {
         product.category,
         product.composition,
         product.strength,
+        product.mrp,
         product.description,
       ]
         .join(' ')
@@ -182,12 +175,12 @@ export default function ProductCatalog() {
                   href={product.href}
                   className="group rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg"
                 >
-                  <div className="flex h-28 w-full items-center justify-center overflow-hidden rounded-lg bg-primary-soft text-2xl font-bold text-primary">
+                  <div className="flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-lg border border-slate-100 bg-white text-2xl font-bold text-primary">
                     {product.imageUrl ? (
                       <img
                         src={product.imageUrl}
                         alt={product.name}
-                        className="h-full w-full object-contain p-2"
+                        className="h-full w-full object-contain p-3"
                       />
                     ) : (
                       product.name.slice(0, 2).toUpperCase()
@@ -195,6 +188,9 @@ export default function ProductCatalog() {
                   </div>
                   <p className="mt-5 text-sm font-semibold text-secondary">{product.category}</p>
                   <h2 className="mt-2 text-xl font-bold text-slate-950">{product.name}</h2>
+                  {product.mrp ? (
+                    <p className="mt-2 text-sm font-bold text-slate-900">MRP: {product.mrp}</p>
+                  ) : null}
                   <p className="mt-3 text-sm leading-6 text-slate-600">{product.description}</p>
                   <span className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-primary group-hover:text-primary-dark">
                     {product.actionLabel}

@@ -11,9 +11,11 @@ import {
   updateDoc,
   type Timestamp,
 } from 'firebase/firestore';
+import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
 import { Edit, Plus, Save, Search, Trash2, X } from 'lucide-react';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { firebaseCollections, type ProductDocument } from '@/lib/firebaseCollections';
+import { storage } from '@/lib/firebase';
 import { products as siteProducts, therapeuticSegments } from '@/lib/siteData';
 
 type ProductRow = Omit<ProductDocument, 'createdAt' | 'updatedAt'> & {
@@ -29,6 +31,7 @@ type ProductFormState = {
   composition: string;
   strength: string;
   packSize: string;
+  mrp: string;
   description: string;
   imageUrl: string;
   isFeatured: boolean;
@@ -45,12 +48,49 @@ const emptyForm: ProductFormState = {
   composition: '',
   strength: '',
   packSize: '',
+  mrp: '',
   description: '',
   imageUrl: '',
   isFeatured: false,
   isActive: true,
   sortOrder: '1',
 };
+
+function getFirebaseUploadError(error: unknown) {
+  const firebaseError = error as { code?: string; message?: string };
+
+  if (firebaseError.code === 'storage/unauthorized') {
+    return 'Image upload blocked by Firebase Storage rules. Please deploy storage rules and verify your admin role.';
+  }
+
+  if (firebaseError.code === 'storage/bucket-not-found') {
+    return 'Firebase Storage bucket was not found. Please verify NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET in .env.local.';
+  }
+
+  if (firebaseError.code === 'storage/retry-limit-exceeded') {
+    return 'Image upload timed out. Please check internet connection and Firebase Storage setup.';
+  }
+
+  if (firebaseError.code === 'storage/unauthenticated') {
+    return 'Please login again before uploading product images.';
+  }
+
+  return firebaseError.message || 'Image upload failed. Please verify Firebase Storage rules and billing setup.';
+}
+
+function formatMrp(value: string) {
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return '';
+  }
+
+  if (/^(₹|rs\.?|inr)\s*/i.test(trimmedValue)) {
+    return trimmedValue.replace(/^rs\.?\s*/i, '₹').replace(/^inr\s*/i, '₹');
+  }
+
+  return `₹${trimmedValue}`;
+}
 
 function createSlug(value: string) {
   return value
@@ -68,6 +108,7 @@ function toForm(product: ProductRow): ProductFormState {
     composition: product.composition || '',
     strength: product.strength || '',
     packSize: product.packSize || '',
+    mrp: product.mrp || '',
     description: product.description || '',
     imageUrl: product.imageUrl || '',
     isFeatured: Boolean(product.isFeatured),
@@ -83,6 +124,8 @@ export default function AdminProductsPage() {
   const [queryText, setQueryText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imageUploadProgress, setImageUploadProgress] = useState(0);
   const [isAddingSiteProducts, setIsAddingSiteProducts] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -160,6 +203,7 @@ export default function AdminProductsPage() {
       composition: form.composition.trim(),
       strength: form.strength.trim(),
       packSize: form.packSize.trim(),
+      mrp: formatMrp(form.mrp),
       description: form.description.trim(),
       imageUrl: form.imageUrl.trim(),
       isFeatured: form.isFeatured,
@@ -219,6 +263,7 @@ export default function AdminProductsPage() {
             composition: product.composition,
             strength: product.strength,
             packSize: product.packSize,
+            mrp: '',
             description: product.description,
             imageUrl: '',
             isFeatured: product.featured,
@@ -256,6 +301,57 @@ export default function AdminProductsPage() {
       setMessage('Product deleted successfully.');
     } catch {
       setError('Product could not be deleted. Please verify admin permissions.');
+    }
+  }
+
+  async function uploadProductImage(file?: File) {
+    if (!file) {
+      return;
+    }
+
+    setMessage('');
+    setError('');
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload a valid image file.');
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Image must be 2 MB or smaller.');
+      return;
+    }
+
+    const productSlug = form.slug || createSlug(form.name) || 'product';
+    const cleanFileName = file.name.toLowerCase().replace(/[^a-z0-9.]+/g, '-');
+    const imageRef = ref(storage, `products/${productSlug}/${Date.now()}-${cleanFileName}`);
+
+    setIsUploadingImage(true);
+    setImageUploadProgress(0);
+
+    try {
+      const uploadTask = uploadBytesResumable(imageRef, file, { contentType: file.type });
+
+      await new Promise<void>((resolve, reject) => {
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+            setImageUploadProgress(progress);
+          },
+          reject,
+          resolve,
+        );
+      });
+
+      const downloadUrl = await getDownloadURL(imageRef);
+      updateField('imageUrl', downloadUrl);
+      setMessage('Image uploaded successfully.');
+    } catch (uploadError) {
+      setError(getFirebaseUploadError(uploadError));
+    } finally {
+      setIsUploadingImage(false);
+      setImageUploadProgress(0);
     }
   }
 
@@ -349,6 +445,9 @@ export default function AdminProductsPage() {
                           <div>
                             <p className="font-bold text-slate-950">{product.name}</p>
                             <p className="mt-1 text-xs text-slate-500">{product.composition}</p>
+                            {product.mrp ? (
+                              <p className="mt-1 text-xs font-semibold text-slate-700">MRP: {product.mrp}</p>
+                            ) : null}
                           </div>
                         </div>
                       </td>
@@ -388,7 +487,7 @@ export default function AdminProductsPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center font-semibold text-slate-500">
+                    <td colSpan={4} className="px-4 py-8 text-center font-semibold text-slate-500">
                       No products found.
                     </td>
                   </tr>
@@ -497,14 +596,30 @@ export default function AdminProductsPage() {
           </label>
 
           <label className="block">
-            <span className="text-sm font-semibold text-slate-700">Image URL</span>
+            <span className="text-sm font-semibold text-slate-700">MRP</span>
             <input
-              type="url"
-              value={form.imageUrl}
-              onChange={(event) => updateField('imageUrl', event.target.value)}
+              type="text"
+              value={form.mrp}
+              onChange={(event) => updateField('mrp', event.target.value)}
               className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-primary"
-              placeholder="https://..."
+              placeholder="₹120.00"
             />
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-semibold text-slate-700">Upload Image</span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={(event) => uploadProductImage(event.target.files?.[0])}
+              disabled={isUploadingImage}
+              className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none file:mr-3 file:rounded-md file:border-0 file:bg-primary-soft file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-primary focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+            />
+            <span className="mt-2 block text-xs font-medium text-slate-500">
+              {isUploadingImage
+                ? `Uploading image${imageUploadProgress ? ` - ${imageUploadProgress}%` : '...'}`
+                : 'JPG, PNG, or WEBP. Max 2 MB.'}
+            </span>
           </label>
 
           {form.imageUrl ? (
@@ -556,7 +671,7 @@ export default function AdminProductsPage() {
 
           <button
             type="submit"
-            disabled={isSaving}
+            disabled={isSaving || isUploadingImage}
             className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-bold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
           >
             {editingId ? <Save className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
